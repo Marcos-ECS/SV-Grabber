@@ -3,6 +3,9 @@ from tkinter import messagebox, filedialog, ttk
 import threading
 import os
 from downloader import descargar_videos
+from i18n import t, set_language  # 👈 Importamos las traducciones
+
+set_language("en")
 
 carpeta_destino = os.getcwd()
 barras = []  
@@ -14,7 +17,7 @@ def seleccionar_carpeta():
     carpeta = filedialog.askdirectory()
     if carpeta:
         carpeta_destino = carpeta
-        ruta_carpeta.set(f"📂 Carpeta destino: {carpeta}")
+        ruta_carpeta.set(f"📂 {t('label_dest')} {carpeta}")
 
 def validar_urls():
     global lista_detectada
@@ -27,22 +30,22 @@ def validar_urls():
         widget.destroy()
 
     if not urls:
-        tk.Label(frame_validacion, text="⚠️ No se detectaron URLs.", fg="red").pack()
+        tk.Label(frame_validacion, text="⚠️ " + t("no_urls"), fg="red").pack()
     else:
-        tk.Label(frame_validacion, text="✅ Links detectados:", fg="green").pack(anchor="w")
+        tk.Label(frame_validacion, text="✅ " + t("urls_detected"), fg="green").pack(anchor="w")
         for i, url in enumerate(urls, start=1):
             tk.Label(frame_validacion, text=f"[{i}] {url}", fg="blue", anchor="w", justify="left").pack(anchor="w")
 
 def iniciar_descarga():
     global barras, labels
     if not lista_detectada:
-        messagebox.showwarning("Advertencia", "Primero valida los links para continuar.")
+        messagebox.showwarning(t("warning"), t("validate_first"))
         return
 
     urls = lista_detectada
     calidad = combo_calidad.get()
-    if calidad not in ["Máxima calidad", "Descarga rápida"]:
-        messagebox.showwarning("Advertencia", "Selecciona una opción de calidad.")
+    if calidad not in [t("quality_max"), t("quality_fast")]:
+        messagebox.showwarning(t("warning"), t("select_quality"))
         return
 
     # limpiar descargas previas
@@ -52,7 +55,7 @@ def iniciar_descarga():
 
     # crear barra + label por cada URL
     for i, url in enumerate(urls, start=1):
-        lbl = tk.Label(frame_descargas, text=f"[{i}/{len(urls)}] Esperando...")
+        lbl = tk.Label(frame_descargas, text=f"[{i}/{len(urls)}] {t('waiting')}")
         lbl.pack(pady=2, anchor="w")
         labels.append(lbl)
 
@@ -73,49 +76,77 @@ def iniciar_descarga():
                 urls,
                 carpeta_destino,
                 callback_progreso,
-                calidad="maxima" if calidad == "Máxima calidad" else "rapida"
+                calidad="maxima" if calidad == t("quality_max") else "rapida"
             )
-            messagebox.showinfo("Finalizado", "✅ Todas las descargas completadas.")
+            messagebox.showinfo(t("done"), "✅ " + t("all_done"))
         except Exception as e:
-            messagebox.showerror("Error", str(e))
+            messagebox.showerror(t("error"), str(e))
         finally:
             boton_descargar.config(state=tk.NORMAL)
 
     threading.Thread(target=tarea).start()
 
+# --- Función para refrescar textos ---
+def refrescar_textos():
+    ventana.title(t("title"))
+    label_urls.config(text=t("label_urls"))
+    boton_validar.config(text=t("button_validate"))
+    label_calidad.config(text=t("label_quality"))
+    combo_calidad.config(values=[t("quality_max"), t("quality_fast")])
+    combo_calidad.set(t("quality_max"))
+    boton_descargar.config(text=t("button_start"))
+    ruta_carpeta.set(f"📂 {t('label_dest')} {carpeta_destino}")
+    boton_carpeta.config(text=t("button_folder"))
+
+# --- Cambio de idioma ---
+def cambiar_idioma(event):
+    lang = combo_lang.get()
+    if lang == "Español":
+        set_language("es")
+    elif lang == "English":
+        set_language("en")
+    refrescar_textos()
+
 # --- GUI ---
 ventana = tk.Tk()
-ventana.title("Descargador Multi-Plataforma")
+ventana.title(t("title"))
 ventana.geometry("700x700")
 
-tk.Label(ventana, text="Ingresa las URLs (separadas por espacio o salto de línea):").pack(pady=10)
+# Menú idioma
+combo_lang = ttk.Combobox(ventana, values=["Español", "English"], state="readonly")
+combo_lang.current(1)
+combo_lang.bind("<<ComboboxSelected>>", cambiar_idioma)
+combo_lang.pack(pady=5)
+
+label_urls = tk.Label(ventana, text=t("label_urls"))
+label_urls.pack(pady=10)
 
 entrada_urls = tk.Text(ventana, width=80, height=6)
 entrada_urls.pack(pady=5)
 
-# Botón validar
-tk.Button(ventana, text="Validar links", command=validar_urls).pack(pady=5)
+boton_validar = tk.Button(ventana, text=t("button_validate"), command=validar_urls)
+boton_validar.pack(pady=5)
 
-# Frame para mostrar URLs detectadas
 frame_validacion = tk.Frame(ventana, relief="groove", borderwidth=2)
 frame_validacion.pack(pady=5, fill="x")
 
-# Selección de calidad
-tk.Label(ventana, text="Selecciona la calidad:").pack(pady=5)
-combo_calidad = ttk.Combobox(ventana, values=["Máxima calidad", "Descarga rápida"], state="readonly")
-combo_calidad.set("Máxima calidad")
+label_calidad = tk.Label(ventana, text=t("label_quality"))
+label_calidad.pack(pady=5)
+
+combo_calidad = ttk.Combobox(ventana, values=[t("quality_max"), t("quality_fast")], state="readonly")
+combo_calidad.set(t("quality_max"))
 combo_calidad.pack(pady=5)
 
-boton_descargar = tk.Button(ventana, text="Descargar", command=iniciar_descarga)
+boton_descargar = tk.Button(ventana, text=t("button_start"), command=iniciar_descarga)
 boton_descargar.pack(pady=10)
 
-# Carpeta destino
 ruta_carpeta = tk.StringVar()
-ruta_carpeta.set(f"📂 Carpeta destino: {carpeta_destino}")
+ruta_carpeta.set(f"📂 {t('label_dest')} {carpeta_destino}")
 tk.Label(ventana, textvariable=ruta_carpeta, fg="green").pack(pady=5)
-tk.Button(ventana, text="Cambiar carpeta", command=seleccionar_carpeta).pack(pady=5)
 
-# Frame para barras dinámicas
+boton_carpeta = tk.Button(ventana, text=t("button_folder"), command=seleccionar_carpeta)
+boton_carpeta.pack(pady=5)
+
 frame_descargas = tk.Frame(ventana)
 frame_descargas.pack(pady=10, fill="x")
 
